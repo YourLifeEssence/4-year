@@ -1,8 +1,6 @@
 #include <iostream>
-#include <string>
+#include <vector>
 #include <sstream>
-#include <cctype>
-#include <stdexcept>
 
 template <typename T>
 class LinkedListStack {
@@ -10,15 +8,14 @@ private:
     struct Node {
         T data;
         Node* next;
-        Node(T val) : data(val), next(nullptr) {}
+        Node(T val) : data(val), next(nullptr){}
     };
     Node* topNode;
-
 public:
     LinkedListStack() : topNode(nullptr) {}
-    
+
     ~LinkedListStack() {
-        while (!isEmpty()) {
+        while(!isEmpty()) {
             pop();
         }
     }
@@ -30,7 +27,7 @@ public:
     }
 
     T pop() {
-        if (isEmpty()) throw std::runtime_error("Стек пуст (underflow)");
+        if (isEmpty()) throw std::runtime_error("Стек пуст");
         Node* temp = topNode;
         T val = temp->data;
         topNode = topNode->next;
@@ -38,101 +35,103 @@ public:
         return val;
     }
 
-    T peek() const {
+    T peek() {
         if (isEmpty()) throw std::runtime_error("Стек пуст");
         return topNode->data;
     }
+
 
     bool isEmpty() const {
         return topNode == nullptr;
     }
 };
 
-int precedence(char op) {
+int priority(char op) {
     if (op == '+' || op == '-') return 1;
     if (op == '*' || op == '/') return 2;
     return 0;
-}
+} 
 
 std::string infixToPostfix(const std::string& infix) {
-    LinkedListStack<char> s;
     std::string postfix = "";
+    LinkedListStack<char> operators;
 
-    for (char c : infix) {
+    for(char c : infix) {
         if (std::isspace(c)) continue;
 
         if (std::isalnum(c)) {
             postfix += c;
             postfix += ' ';
-        } 
+        }
         else if (c == '(') {
-            s.push(c);
-        } 
+            operators.push(c);
+        }
         else if (c == ')') {
-            while (!s.isEmpty() && s.peek() != '(') {
-                postfix += s.pop();
+            while(!operators.isEmpty() && operators.peek() != '(') {
+                postfix += operators.pop();
                 postfix += ' ';
             }
-            if (!s.isEmpty() && s.peek() == '(') {
-                s.pop();
+            if (!operators.isEmpty() && operators.peek() == '('){
+                operators.pop();
             }
-        } 
+        }
         else {
-            while (!s.isEmpty() && precedence(s.peek()) >= precedence(c)) {
-                postfix += s.pop();
+            while(!operators.isEmpty() && priority(operators.peek()) >= priority(c)){
+                postfix += operators.pop();
                 postfix += ' ';
             }
-            s.push(c);
+            operators.push(c);
         }
     }
-
-    while (!s.isEmpty()) {
-        postfix += s.pop();
+    while(!operators.isEmpty()) {
+        postfix += operators.pop();
         postfix += ' ';
     }
+
 
     return postfix;
 }
 
-int evaluatePostfix(const std::string& postfix) {
-    LinkedListStack<int> s;
+int calculatePostfix(const std::string& postfix) {
     std::stringstream ss(postfix);
     std::string token;
-
+    LinkedListStack<int> intStack;
     while (ss >> token) {
-        if (std::isdigit(token[0]) || (token.size() > 1 && token[0] == '-')) {
-            s.push(std::stoi(token));
-        } else {
-            int val2 = s.pop();
-            int val1 = s.pop();
-            char op = token[0];
-            
-            switch (op) {
-                case '+': s.push(val1 + val2); break;
-                case '-': s.push(val1 - val2); break;
-                case '*': s.push(val1 * val2); break;
-                case '/': 
-                    if (val2 == 0) throw std::runtime_error("Деление на ноль");
-                    s.push(val1 / val2); 
-                    break;
-                default: throw std::runtime_error("Неизвестный оператор");
-            }
+        if (isdigit(token[0])) {
+            intStack.push(std::stoi(token));
+        }
+        else if (token[0] == '+') {
+            int right = intStack.pop();
+            int left = intStack.pop();
+            intStack.push(left + right);
+        }
+        else if (token[0] == '-') {
+            int right = intStack.pop();
+            int left = intStack.pop();
+            intStack.push(left - right);
+        }
+        else if (token[0] == '*') {
+            int right = intStack.pop();
+            int left = intStack.pop();
+            intStack.push(left * right);
+        }
+        else if (token[0] == '/') {
+            int right = intStack.pop();
+            if (right == 0) throw std::logic_error("Деление на ноль");
+            int left = intStack.pop();
+            intStack.push(left / right);
         }
     }
-    return s.pop();
+
+    return intStack.pop();
 }
 
 int main() {
-    system("chcp 65001 > nul");
+    std::string inputString = "2 + 3 * 4";
+    std::cout << infixToPostfix(inputString) << std::endl;
 
-    std::string infix = "3+5*2-8/4";
-    std::string postfix = infixToPostfix(infix);
-    std::cout << "Инфикс: " << infix << "\n";
-    std::cout << "Постфикс: " << postfix << "\n";
-
-    std::string multiDigitPostfix = "12 3 4 * +";
-    std::cout << "Постфикс многосимвольное: " << multiDigitPostfix << "\n";
-    std::cout << "Результат вычисления: " << evaluatePostfix(multiDigitPostfix) << "\n";
+    std::string strCalcPostfix = "10 2 3 + *";
+    std::cout << calculatePostfix(strCalcPostfix) << std::endl;
 
     return 0;
 }
